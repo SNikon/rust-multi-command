@@ -1,0 +1,9 @@
+{
+    "commands": [
+        "none"
+    ],
+    "tests": [
+        { "repository": "git@github.com:SNikon/r_tokio.git" },
+        { "repository": "git@github.com:SNikon/scraper.git" }
+    ]
+}
