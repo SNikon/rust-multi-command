@@ -25,12 +25,12 @@ async fn main() -> Result<()> {
                     tokio::spawn(async move {
                         let target_folder = Uuid::new_v4().to_string();
 
-                        let mut repo = RepositoryReference { path: PathBuf::from(target_folder), url: mv_repository }; 
+                        let repo = RepositoryReference::new(&target_folder, &mv_repository);
                         let create_result = repo.prepare().await;
 
                         if create_result.is_err() {
                             println!("->> {:?}", create_result);
-                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.path, Duration::MAX.as_millis(), mv_command, repo.url)
+                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, Duration::MAX.as_millis(), mv_command, repo.url)
                         }
 
                         let clone_result = repo.clone().await;
@@ -39,22 +39,36 @@ async fn main() -> Result<()> {
                             println!("->> {:?}", clone_result);
                             let deletion_result = repo.cleanup().await;
                             if deletion_result.is_err() { println!("->> {:?}", deletion_result); }   
-                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.path, Duration::MAX.as_millis(), mv_command, repo.url)
+                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, Duration::MAX.as_millis(), mv_command, repo.url)
                         }
 
-                        println!("Repository cloned '{:?}' at '{:?}'.", repo.path, repo.url);
-                        let start_time = Instant::now();
+                        println!("Repository cloned '{:?}' at '{:?}'.", repo.folder, repo.url);
     
-                        let _install_result = Command::new("yarn")
-                            .current_dir(&repo.path)
-                            .output().await;
+                        let install_result = Command::new("cmd")
+                            .args(["/c", "yarn", "install"])
+                            .current_dir(&repo.folder)
+                            .status().await;
     
-                        // Do stuff
+                        if install_result.is_err() {
+                            println!("->> {:?}", install_result);
+                            let deletion_result = repo.cleanup().await;
+                            if deletion_result.is_err() { println!("->> {:?}", deletion_result); }   
+                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, Duration::MAX.as_millis(), mv_command, repo.url)
+                        }
+
+                        println!("{:?}", install_result.unwrap());
                         
+                        let start_time = Instant::now();
+
+                        // Do stuff
+
+
+                        let elapsed_time = start_time.elapsed().as_millis();
+
                         let deletion_result = repo.cleanup().await;
                         if deletion_result.is_err() { println!("->> {:?}", deletion_result); }   
 
-                        return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.path, start_time.elapsed().as_millis(), mv_command, repo.url)
+                        return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, elapsed_time, mv_command, repo.url)
                     })
                 }))
             .collect();
