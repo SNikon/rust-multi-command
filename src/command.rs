@@ -8,7 +8,9 @@ pub struct CommandConfig {
     #[clap(short = 's', long = "source")]
     pub test_source: Option<PathBuf>,
     #[clap(short = 'o', long = "output")]
-    pub result_target: Option<PathBuf>
+    pub result_target: Option<PathBuf>,
+    #[clap(short = 'k', long = "ssh-key")]
+    pub key_file: Option<PathBuf>
 }
 
 #[derive(Debug, Deserialize)]

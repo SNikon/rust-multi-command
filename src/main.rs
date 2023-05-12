@@ -21,6 +21,7 @@ async fn main() -> Result<()> {
                 .map(|test_case| {
                     let mv_command = command.clone();
                     let mv_repository = test_case.repository.clone();
+                    let mv_ssh_key = config.key_file.clone();
                     
                     tokio::spawn(async move {
                         let target_folder = Uuid::new_v4().to_string();
@@ -34,7 +35,7 @@ async fn main() -> Result<()> {
                         let target_folder = Path::new(&target_folder).canonicalize().unwrap();
                         println!("Folder created '{:?}'.", target_folder);
                         
-                        let repo = RepositoryReference { path: target_folder, url: mv_repository, repo: Option::None };
+                        let repo = RepositoryReference { ssh_key: mv_ssh_key, path: target_folder, url: mv_repository, repo: Option::None };
                         let clone_result = repo.clone();
 
                         if clone_result.is_err() {

@@ -1,6 +1,6 @@
 use anyhow::{Result};
-use git2::{Repository, RemoteCallbacks, build::{CheckoutBuilder, RepoBuilder}, FetchOptions, Progress};
-use std::{cell::RefCell, path::{PathBuf, Path}, io::{self, Write}};
+use git2::{Repository, RemoteCallbacks, build::{CheckoutBuilder, RepoBuilder}, FetchOptions, Progress, Cred};
+use std::{cell::RefCell, path::{PathBuf}, io::{self, Write}, str::FromStr};
 
 struct State {
     current: usize,
@@ -11,6 +11,7 @@ struct State {
 }
 
 pub struct RepositoryReference {
+    pub ssh_key: Option<PathBuf>,
     pub path: PathBuf,
     pub repo: Option<Repository>,
     pub url: String
@@ -86,6 +87,24 @@ impl RepositoryReference {
             state.total = total;
             print(&mut *state);
         });
+
+        if let Some(key_path) = self.ssh_key.clone() {
+            let pvt_key = key_path.canonicalize().unwrap();
+            let pub_key = PathBuf::from_str(&format!("{}.pub", pvt_key.to_str().unwrap())).unwrap();
+
+            cb.credentials(move |_url, username_from_url, _allowed_types| {
+                println!("->> ssh user {:?}", username_from_url);
+                println!("->> ssh pub key {:?}", pub_key);
+                println!("->> ssh pvt key {:?}", pvt_key);
+
+                Cred::ssh_key(
+                    username_from_url.unwrap(),
+                    Some(&pub_key),
+                    &pvt_key,
+                    None,
+                )
+            });
+        }
     
         let mut fo = FetchOptions::new();
         fo.remote_callbacks(cb);
