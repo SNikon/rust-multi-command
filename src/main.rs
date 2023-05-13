@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use tokio::{time::Instant, process::Command};
 use uuid::Uuid;
-use std::{fs, io::BufReader, time::Duration, path::{PathBuf}};
+use std::{fs, io::BufReader, time::Duration};
 use rust_multi_command::{command::{CommandConfig, TestConfig}, git::RepositoryReference};
 
 #[tokio::main]

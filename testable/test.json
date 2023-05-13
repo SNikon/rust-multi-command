@@ -3,7 +3,10 @@
         "none"
     ],
     "tests": [
-        { "repository": "git@github.com:SNikon/tuki-functions.git" },
+        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
+        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
+        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
+        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
         { "repository": "git@github.com:SNikon/vite_stack_test.git" }
     ]
 }

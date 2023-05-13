@@ -1,4 +1,5 @@
 use anyhow::{Result, Context};
+use retry::{delay::Fixed, retry};
 use std::{fs, env};
 use std::path::{PathBuf, Path};
 use std::process::Stdio;
@@ -49,7 +50,9 @@ impl RepositoryReference {
     }
 
     pub async fn cleanup(&self) -> Result<()> {
-        fs::remove_dir_all(&self.path).with_context(|| format!("Failed to delete folder '{:?}", self.path))?;
+        retry(Fixed::from_millis(1000), || { fs::remove_dir_all(&self.path) })
+            .with_context(|| format!("Failed to delete folder '{:?}", self.path))?;
+        
         Ok(())
     }
 }
