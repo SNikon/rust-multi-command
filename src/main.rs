@@ -1,83 +1,96 @@
 use anyhow::Result;
 use clap::Parser;
-use tokio::{time::Instant, process::Command};
+use cursive::{
+    views::{LinearLayout, TextContent, TextView},
+    Cursive, CursiveExt, view::{Resizable}, event::{Event, Key},
+};
+use rust_multi_command::{
+    command::{CommandList, RunConfig},
+    git::ExecutionReference, ui::KeyHandlerView,
+};
+use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
+use std::{fs, io::BufReader};
+use tokio::{task::JoinHandle, time::Instant};
 use uuid::Uuid;
-use std::{fs, io::BufReader, time::Duration};
-use rust_multi_command::{command::{CommandConfig, TestConfig}, git::RepositoryReference};
+
+struct StdoutContent(TextContent);
+
+impl Write for StdoutContent {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let s = String::from_utf8_lossy(buf).to_string();
+        self.0.set_content(s);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let config = CommandConfig::parse();
+    let config = RunConfig::parse();
+
+    let mut siv = Cursive::default();
+    // siv.menubar().clear();
+    // siv.set_window_title("Tsuki Shortcuts");
     
-    if let Some(config_file) = config.test_source {
-        let file = fs::File::open(config_file).expect("Should be able to read the file.");
-        let file_reader = BufReader::new(file);
-        let config_data: TestConfig = serde_json::from_reader(file_reader).expect("Should be able to parse the JSON format.");
+    // let mut layout = LinearLayout::horizontal();
 
-        let task_list: Vec<_> = config_data.commands
-            .iter()
-            .flat_map(|command| config_data.tests
-                .iter()
-                .map(|test_case| {
-                    let mv_command = command.clone();
-                    let mv_repository = test_case.repository.clone();
-                    
-                    tokio::spawn(async move {
-                        let target_folder = Uuid::new_v4().to_string();
+    // let text_content = Arc::new(Mutex::new(TextContent::new("")));
+    // let text_view = TextView::new_with_content(text_content.lock().as_deref().unwrap().clone());
 
-                        let repo = RepositoryReference::new(&target_folder, &mv_repository);
-                        let create_result = repo.prepare().await;
+    let mut select_view = KeyHandlerView::new();
 
-                        if create_result.is_err() {
-                            println!("->> {:?}", create_result);
-                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, Duration::MAX.as_millis(), mv_command, repo.url)
-                        }
-
-                        let clone_result = repo.clone().await;
-
-                        if clone_result.is_err() {
-                            println!("->> {:?}", clone_result);
-                            let deletion_result = repo.cleanup().await;
-                            if deletion_result.is_err() { println!("->> {:?}", deletion_result); }   
-                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, Duration::MAX.as_millis(), mv_command, repo.url)
-                        }
-
-                        println!("Repository cloned '{:?}' at '{:?}'.", repo.folder, repo.url);
+    // layout.add_child(text_view.full_screen());
     
-                        let install_result = Command::new("cmd")
-                            .args(["/c", "yarn", "install"])
-                            .current_dir(&repo.folder)
-                            .status().await;
+    // siv.add_fullscreen_layer(layout);
+    siv.add_layer(select_view);
+
+    // if let Some(config_file) = config.test_source {
+    //     let file = fs::File::open(config_file).expect("Should be able to read the file.");
+    //     let file_reader = BufReader::new(file);
+    //     let config: CommandList =
+    //         serde_json::from_reader(file_reader).expect("Should be able to parse the JSON format.");
+
+    //     run_tests("".to_string(), config, text_content).await?;
+    // }
+
+    // siv.set_fps(30);
+    siv.run();
     
-                        if install_result.is_err() {
-                            println!("->> {:?}", install_result);
-                            let deletion_result = repo.cleanup().await;
-                            if deletion_result.is_err() { println!("->> {:?}", deletion_result); }   
-                            return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, Duration::MAX.as_millis(), mv_command, repo.url)
-                        }
+    Ok(())
+}
 
-                        println!("{:?}", install_result.unwrap());
-                        
-                        let start_time = Instant::now();
+async fn run_tests(
+    _which: String,
+    test_config: CommandList,
+    text_content: Arc<Mutex<TextContent>>,
+) -> Result<()> {
+    let _task_list: Vec<JoinHandle<Result<()>>> = test_config
+        .into_iter()
+        .map(|test_case| {
+            let out = text_content.clone();
 
-                        // Do stuff
+            tokio::spawn(async move {
+                let target_folder = Uuid::new_v4().to_string();
 
+                let repo = ExecutionReference::new(&target_folder, test_case);
+                repo.host(&out).await?;
+                repo.clone(&out).await?;
+                repo.prepare(&out).await?;
 
-                        let elapsed_time = start_time.elapsed().as_millis();
+                let start_time = Instant::now();
+                repo.execute(&out).await?;
+                let _elapsed_time = start_time.elapsed().as_millis();
 
-                        let deletion_result = repo.cleanup().await;
-                        if deletion_result.is_err() { println!("->> {:?}", deletion_result); }   
+                repo.cleanup(&out).await?;
 
-                        return format!("[{:?}] Elapsed {:?}ms on '{:?}' -- '{:?}'.", repo.folder, elapsed_time, mv_command, repo.url)
-                    })
-                }))
-            .collect();
+                Ok(())
+            })
+        })
+        .collect();
 
-        for task in task_list {
-            let result = task.await.expect("task failed");
-            println!("{}", result);
-        }
-    }
-
-    return Ok(());
+    Ok(())
 }

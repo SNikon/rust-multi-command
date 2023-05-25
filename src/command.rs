@@ -4,22 +4,18 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[clap()]
-pub struct CommandConfig {
+pub struct RunConfig {
     #[clap(short = 's', long = "source")]
     pub test_source: Option<PathBuf>,
     #[clap(short = 'o', long = "output")]
     pub result_target: Option<PathBuf>,
-    #[clap(short = 'k', long = "ssh-key")]
-    pub key_file: Option<PathBuf>
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TestDetail {
-    pub repository: String
+pub struct CommandDetail {
+    pub prepare: Option<Vec<String>>,
+    pub repository: String,
+    pub command: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct TestConfig {
-    pub commands: Vec<String>,
-    pub tests: Vec<TestDetail>
-}
+pub type CommandList = Vec<CommandDetail>;

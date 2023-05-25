@@ -1,12 +1,7 @@
-{
-    "commands": [
-        "none"
-    ],
-    "tests": [
-        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
-        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
-        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
-        { "repository": "git@github.com:SNikon/vite_stack_test.git" },
-        { "repository": "git@github.com:SNikon/vite_stack_test.git" }
-    ]
-}
+[
+    {
+        "repository": "git@github.com:SNikon/vite_stack_test.git",
+        "prepare": ["yarn install"],
+        "command": "yarn lint:fix"
+    }
+]
